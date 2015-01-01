@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Wahblick.de -- Wahlprognosen und Analysen von Wahlumfragen</title>
+
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+
+    <link href="css/main.css" rel="stylesheet">
+
+  </head>
+
+  <!-- <body data-spy="scroll" data-target=".navbar"> -->
+  <body>
+
+    <script src="js/d3.v3.min.js"></script>
+    <div class="navbar navbar-inverse" role="navigation">
+      <div class="container">
+        <div class="navbar-header">
+          <a class="navbar-brand" href="#">Wahlblick</a>
+        </div>
+        <ul class="nav navbar-nav">
+          <li><a href="#euro14">Europawahl 2014</a></li>
+          <li><a href="#bw13">Bundestagswahl 2013</a></li>
+          <li><a href="#howitworks">Wie es funkioniert</a></li>
+          <li><a href="#aboutus">&Uuml;ber uns</a></li>
+          <li><a href="#contact">Kontakt</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="container">
+      <div class="narrow">
+        <h1>Wahlblick</h1>
+        <p class="lead">Wahlprognosen und Analysen von Wahlumfragen.</p>
+        <p>Willkommen auf Wahlblick.de! Hier stellen wir unsere Analyse von Wahlumfragen und Vorhersagen vor. Unser Ziel ist die Integration von Daten aus verschiedenen Umfragen und eine objektive Vorhersage die den Faktor Unsicherheit klar zum Ausdruck bringt. Wir weisen darauf hin, dass unser Modell <strong><em>work in progress</em></strong> darstellt und st&auml;ndig verbessert wird. Bei wichtigen Ver&auml;nderungen werden wir diese klar ank&uuml;ndigen.</p>
+        
+        <h2 id="euro14">Europawahl 2014</h2>
+        <p class="text-justify">F&uuml;r die Europawahl gibt es seit einigen Wochen Umfrageergebnisse, die wir hier mit unserem Modell analysiert haben. Die folgende Abbildung zeigt unsere Sch&auml;tzung f&uuml;r die aktuelle politische Stimmung, zusammen mit Unsicherheitsintervallen. Unsere Sch&auml;tzungen k&ouml;nnen von den Umfragen (dargestellt als Punkte) abweichen, da wir erstens statistische Schwankungen zulassen, und zweitens systematische Abweichungen einiger Umfrageinstitute, die wir aus Umfragen der letzten vier Jahre gemessen haben, herausgerechnet sind (siehe <a href="#politische_stimmung_chart">unten</a>).</p>
+      </div>
+
+      <div id="politische_stimmung_EW_chart" class="chart"></div>
+
+      <div class="narrow">
+        <p class="text-justify">F&uuml;r das deutsche Gesamtergebnis bei der Europawahl am 25. Mai 2014 sch&auml;tzen wir folgende Endergebnisse (mit 95% Wahrscheinlichkeit):</p>
+        
+        <table class="table">
+          <tr>
+            <th>Partei</th>
+            <th>Vorhersage Europawahl (Stand 9. Mai 2014)</th>
+          </tr>
+          <tr>
+            <td>CDU</td>
+            <td>35.8% - 40.4%</td>
+          </tr>
+          <tr>
+            <td>SPD</td>
+            <td>23.6% - 27.8%</td>
+          </tr>
+          <tr>
+            <td>Gr&uuml;ne</td>
+            <td>9.6% - 12.6%</td>
+          </tr>
+          <tr>
+            <td>Linke</td>
+            <td>7.4 - 10.1%</td>
+          </tr>
+          <tr>
+            <td>AFD</td>
+            <td>5.1% - 7.4%</td>
+          </tr>
+          <tr>
+            <td>FDP</td>
+            <td>2.7% - 4.5%</td>
+          </tr>
+        </table>                
+
+        <h2 id="bw13">Bundestagswahl 2013</h2>
+        <p class="text-justify">Die Umfrageergebnisse der Sonntagsfrage werden in regelm&auml;&szlig;igen Abst&auml;nden von verschiedenen Instituten erhoben und z.B. auf <a href="http://www.wahlrecht.de">Wahlrecht.de</a> ver&ouml;ffentlicht.</p>
+        <p class="text-justify"> Die folgende Abbildung zeigt s&auml;mtliche Umfrageergebnisse zwischen den Bundestagswahlen 2009 und 2013, zusammen mit unserer Sch&auml;tzung f&uuml;r die tats&auml;chliche Stimmungslage. Die farbigen Fl&auml;chen dr&uuml;cken dabei  die Unsicherheit in den Sch&auml;tzungen aus. Mit den Schaltfl&auml;chen k&ouml;nnen die einzelnen Institute gesondert betrachtet und einzelne Parteien ausgeblendet werden. Im unteren Bereich der Abbildung kann au&szlig;erdem gezoomt werden.</p>
+      </div>
+
+      <div id="politische_stimmung_chart" class="chart"></div>
+
+      <div class="narrow">
+        <p class="text-justify"> Warum ist die Unsicherheit kleiner als die Streuung der Umfrageergebnisse vermuten l&auml;sst? Das liegt an einer <em>systemtatischen</em> Verschiebung der Ergebnisse zwischen den einzelnen Umfrageinstituten. Der Effekt wird klar, wenn man in der Abbildung die Institute einzeln anzeigt und die Schaltfl&auml;che "Verschieben" benutzt. Diese systematische Verschiebung ist aus den Daten ablesbar und hier pro Institut dargestellt. Wie man sieht, sind die Abweichungen bei den gro&szlig;en Parteien teilweise bis zu zwei Prozentpunkte gro&szlig;, so etwa bei der SPD zwischen Forsa und FgWahlen. In unseren Vorhersagen haben wir diese Verschiebungen herausgerechnet.</p>
+
+        <div id="biasvector_chart" class="chart"></div>
+      
+        <!-- <h3>Vorhersagen</h3>
+        <p class="text-justify">Besonders interessant ist zu sehen, wie unsere Vorhersage f&uuml;r die Bundestagswahl 2013 zu einem fr&uuml;heren Zeitpunkt ausgefallen w&auml;re. Das wird in der folgenden Abbildung gezeigt. Zu jeden Datum gibt es hier eine Vorhersage (mit 95% Sicherheit) f&uuml;r das Zweitstimmenergebnis der Parteien <em>am Wahltag</em>. Je n&auml;her das Datum zum Wahltag r&uuml;ckt, desto kleiner wird die Unsicherheit. Zu den echten Wahlergebnissen (Punkte) gibt es einige Abweichungen: zum Beispiel liegt die CDU kurz vor der Wahl bei 38-40.5%, erzielt dann aber 41.5%.</p>
+      </div>
+
+      <div id="zweitstimmen_chart" class="chart"></div>
+      
+      <div class="narrow"> -->
+        <h3>F&uuml;nfprozenth&uuml;rde</h3>
+        <p class="text-justify">Bei unserer Sch&auml;tzung erhalten wir genaue Wahrscheinlichkeiten f&uuml;r jedes m&ouml;gliche Wahlergebnis. Damit k&ouml;nnen wir auch berechnen mit welcher Wahrscheinlichkeit eine Partei am Wahltag &uuml;ber die F&uuml;nfprozenth&uuml;rde klettert. Wie man sieht, ver&auml;ndert sich diese Wahrscheinlichkeit bei einigen Parteien, wie etwa den Piraten und der FDP, im Laufe der Zeit dramatisch. Im letzten Monat vor der Wahl lag f&uuml;r die FDP diese Wahrscheinlichkeit zwischen 48% und 85%. Die Sch&auml;tzungen f&uuml;r die FDP haben stark geschwankt, da diese Partei in den Umfragen um die 5% lag, und daher sowohl ein Scheitern als auch Erfolg durchaus wahrscheinlich waren.</p>
+      </div>  
+          
+      <div id="fuenfprozenthuerde_chart" class="chart"></div>
+
+      <div class="narrow">
+        <h3>Koalitionen</h3>
+        <p class="text-justify">Wir k&ouml;nnen mit unserem Modell au&szlig;erdem berechnen, mit welcher Wahrscheinlichkeit bestimmte Koalitionen die Mehrheit der Sitze im Bundestag erreichen. Dies h&auml;ngt nat&uuml;rlich vom Erreichen der F&uuml;nfprozenth&uuml;rde ab, und daher gibt es auch hier starke Schwankungen &uuml;ber den gesamten Zeitraum, die unter anderen mit den Schwankungen um das Erreichen der F&uuml;nfprozenth&uuml;rde zusammenh&auml;ngen.</p>
+      </div> 
+
+      <div id="koalitionen_chart" class="chart"></div>
+      
+      <div class="narrow">
+        <h2 id="howitworks">Wie es funktioniert</h2>
+        <p>Die Grundidee unserer Modellierung von Umfrageergebnissen ist die Annahme einer - prinzipiell unbekannten - Stimmung in der Wahlbev&ouml;lkerung. Diese Stimmung kann mathematisch durch Prozentzahlen ausgedr&uuml;ckt werden, wie ein Zweitstimmenergebnis bei einer Wahl. Da wir zu keinem Zeitpunkt sicher wissen, wo diese Stimmung liegt, k&ouml;nnen wir nur Wahrscheinlichkeiten angeben. Mit jeder Umfrage erhalten wir eine Information, die jedoch nicht gleich der momentanen Stimmung ist, sondern einen statistischen Fehler enth&auml;lt, da nur eine begrenzte Zahl von W&auml;hlern (typischerweise zwischen 1000 und 2000) befragt wird. Jede Umfrage enth&auml;lt daher nur begrenzten Informationsgehalt und erst zusammengenommen erlauben sie uns, gewisse systematische Trends in der zugrundeliegenden Stimmung in der Wahlbev&ouml;lkerung vorherzusagen.</p>
+        
+        <p>Idealerweise verwendet unser Modell m&ouml;glichst unbearbeitete Daten der Umfrageinstitute, also die direkten Ergebnisse der Umfragen. Die Daten, die durch die Institute ver&ouml;ffentlicht werden, sind hingegen bereits bearbeitet. Zum Beispiel fehlt in den Angaben die Anzahl der untentschlossenen W&auml;hler. Die teilweise gro&szlig;en systematischen Unterschiede zwischen den Ergebnissen der Institute zeigen, dass jeweils unterschiedliche Ver&auml;nderungen der Rohdaten vorgenommen werden, mit denen die Institute versuchen statistische Verzerrungen auszugleichen. Diese f&uuml;r uns intransparente Bearbeitung der Rohdaten erschwert eine korrekte Modellierung.</p>
+        
+        <p>Um unser Modell zu testen, wenden wir es nicht nur auf die echten Daten an, sondern verwenden auch Simulationen von Stimmungsschwankungen und Umfragen. Damit k&ouml;nnen wir zum Beispiel testen, wie gut unser Modell aus den simulierten Umfragen die tats&auml;chliche Stimmung vorhersagt. Simulationen helfen uns auch zu testen, wie gut wir systematische Unterschiede zwischen Instituten erkennen k&ouml;nnen.</p>
+        
+        <div id="aboutus"></div>
+        <h2>&Uuml;ber uns</h2>
+        <p class="text-justify">Wir sind Statistik-Enthusiasten, Physiker und aktive Wissenschaftler. Wir kennen uns seit 10 Jahren, als Physik-Studenten in K&ouml;ln und als Postdoktoranden in Cambridge. Methodisch verorten wir uns klar im Lager der <a href="http://en.wikipedia.org/wiki/Bayesian_inference">Bayes-Schule</a>. Wir sind politisch interessiert, allerdings haben wir f&uuml;r die Modelle und Analysen ausschlie&szlig;lich objektive statistische Methoden verwendet und betreiben weder Werbung f&uuml;r eine Partei noch interpretieren wir unsere Ergebnisse politisch.</p>
+  
+        <!-- <div class="spacer" id="contact"></div> -->
+        <h2 id="contact">Kontakt</h2>
+        <p>Andrej Fischer: andrej.fischer _at_ wahlblick.de</p>
+        <p>Stephan Schiffels: stephan.schiffels _at_ wahlblick.de</p>
+      </div>
+      <hr>
+      <p>&copy; Andrej Fischer und Stephan Schiffels 2014</p>
+    </div>
+
+
+    <script src="js/jquery-1.11.0.min.js"></script>
+    <script src="js/zweitstimmen_chart.js"></script>
+    <script src="js/politische_stimmung_chart.js"></script>
+    <script src="js/politische_stimmung_EW_chart.js"></script>
+    <script src="js/fuenfprozenthuerde_chart.js"></script>
+    <script src="js/koalitionen_chart.js"></script>
+    <script src="js/biasvector_chart.js"></script>
+    <script>
+    var politische_stimmung_EW_chart_svg = d3.select("#politische_stimmung_EW_chart").append("svg");
+    politische_stimmung_EW_chart(politische_stimmung_EW_chart_svg);
+    
+    // var zweitstimmen_chart_svg = d3.select("#zweitstimmen_chart").append("svg");
+    // zweitstimmen_chart(zweitstimmen_chart_svg);
+    
+    var politische_stimmung_svg = d3.select("#politische_stimmung_chart").append("svg");
+    politische_stimmung_chart(politische_stimmung_svg);
+    
+    var fuenfprozenthuerde_svg = d3.select("#fuenfprozenthuerde_chart").append("svg");
+    fuenfprozenthuerde_chart(fuenfprozenthuerde_svg);
+    
+    var koalitionen_svg = d3.select("#koalitionen_chart").append("svg");
+    koalitionen_chart(koalitionen_svg);
+    
+    var biasvector_svg = d3.select("#biasvector_chart").append("svg");
+    biasvector_chart(biasvector_svg);
+    </script>
+
+    <script src="js/bootstrap.min.js"></script>
+  </body>
+</html>

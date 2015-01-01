@@ -1,0 +1,84 @@
+/*body {
+  padding-top: 50px;
+}
+*/
+/*.spacer {
+  height: 50px;
+}
+
+*/
+.chart {
+  font: 10px sans-serif;
+  width: 960px;
+  padding-top: 15px;
+  padding-bottom: 30px;
+  padding-left: 0px;
+  padding-right: 0px;
+}
+
+.narrow {
+  width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.axis {
+  font-size: 12px;
+}
+
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+
+.brush .extent {
+  stroke: #fff;
+  fill-opacity: .125;
+  shape-rendering: crispEdges;
+}
+
+.overlay {
+  fill: none;
+  pointer-events: all;
+}
+
+.plot {
+  fill-opacity: 0.6;
+  clip-path: url(#clip);
+}
+
+.legend {
+  fill-opacity: 0.6;
+  text-anchor: end;
+}
+
+.hoverLine {
+  stroke: #808080;
+}
+
+.areaPlot {
+  fill-opacity: 0.4;
+  clip-path: url(#clip);
+}
+
+.linePlot {
+  fill: none;
+  stroke-width: 2;
+  clip-path: url(#clip);
+}
+
+.scatterPlot {
+  fill: none;
+  clip-path: url(#clip);
+}
+
+.electionMark {
+  clip-path: url(#clip);
+}
+
+.iLegend {
+  fill-opacity: 0.6;
+  text-anchor: end;
+}
