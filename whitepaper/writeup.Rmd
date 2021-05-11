@@ -1,0 +1,22 @@
+---
+title: "Simplex Diffusion HMM"
+author: "Stephan Schiffels"
+date: "May 2021"
+output: pdf_document
+---
+
+Dirichlet distribution
+
+\begin{equation}
+p(\{x_i\}|\{\alpha_i\}) = \frac{\Gamma(\mathrm{A})}{\prod_{i=1}^K \Gamma(\alpha_i)} \prod_{i=1}^K x_i^{\alpha_i - 1}
+\end{equation}
+
+with $\mathrm{A}=\sum_i \alpha_i$.
+
+The log of the dirichlet function is then
+
+\begin{equation}
+\log p(\{x_i\}|\{\alpha_i\}) = \left(\log\Gamma(\mathrm{A}) - \sum_{i=1}^K \log\Gamma(\alpha_i)\right)
+  \sum_{i=1}^K (\alpha_i - 1) \log(x_i)
+\end{equation}
+
