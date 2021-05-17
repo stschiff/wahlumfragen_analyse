@@ -137,32 +137,23 @@ run_forward_backward <- function(input_df,
                                  parties = c("CDU_CSU", "SPD", "GRÜNE", "FDP", "LINKE", "AFD", "SONSTIGE")) {
   forward_vec <- run_forward(input_df, diffusion_constant, date_col, size_col, parties)
   backward_vec <- run_backward(input_df, diffusion_constant, date_col, size_col, parties)
-  ret <- tibble::tibble(date = input_df[[date_col]], forward_vec = forward_vec, backward_vec = backward_vec)
-  return(dplyr::mutate(ret, posterior = purrr::map2(forward_vec, backward_vec, ~ .x + .y - 1)))
-}
-
-make_marginal_beta_params <- function(fb_df,
-                                      date_col = "date",
-                                      posterior_col = "posterior",
-                                      parties = c("CDU_CSU", "SPD", "GRÜNE", "FDP", "LINKE", "AFD", "SONSTIGE")) {
-  ret <- fb_df
+  ret <- tibble::tibble(date = input_df[[date_col]], forward_vec = forward_vec, backward_vec = backward_vec) %>%
+    dplyr::mutate(posterior = purrr::map2(forward_vec, backward_vec, ~ .x + .y - 1))
   for (i in 1:length(parties)) {
     partyName <- parties[i]
-    b1 <- purrr::map_dbl(fb_df$posterior, ~ .x[i])
-    b2 <- purrr::map_dbl(fb_df$posterior, ~ sum(.x) - .x[i])
+    b1 <- purrr::map_dbl(ret$posterior, ~ .x[i])
+    b2 <- purrr::map_dbl(ret$posterior, ~ sum(.x) - .x[i])
     ret <- dplyr::mutate(ret, "{partyName}" := purrr::map2(b1, b2, ~ c(.x, .y)))
   }
   return(ret)
 }
 
 plot_polldat <- function(input_df,
-                         poll_date_col = "Release_Date",
-                         model_date_col = "date",
-                         parties = c("CDU_CSU", "SPD", "GRÜNE", "FDP", "LINKE", "AFD", "SONSTIGE"),
-                         outparties = c("CDU_CSU", "SPD", "GRÜNE", "FDP", "LINKE", "AFD")) {
-  pivoted_polldat <- input_df %>% dplyr::select(all_of(c(poll_date_col, outparties))) %>%
-    tidyr::pivot_longer(cols=all_of(outparties), names_to="Party", values_to="Percentage") %>%
-    dplyr::mutate(Party = factor(Party, levels=outparties))
+                         date_col = "Release_Date",
+                         parties = c("CDU_CSU", "SPD", "GRÜNE", "FDP", "LINKE", "AFD")) {
+  pivoted_polldat <- input_df %>% dplyr::select(all_of(c(date_col, parties))) %>%
+    tidyr::pivot_longer(cols=all_of(parties), names_to="Party", values_to="Percentage") %>%
+    dplyr::mutate(Party = factor(Party, levels=parties))
   
   cols <- c("black", "red", "green", "yellow", "purple", "blue")
   names(cols) <- parties
@@ -174,24 +165,25 @@ plot_polldat <- function(input_df,
 
 plot_model <- function(fb_df,
                        date_col = "date",
-                       parties = c("CDU_CSU", "SPD", "GRÜNE", "FDP", "LINKE", "AFD", "SONSTIGE"),
-                       outparties = c("CDU_CSU", "SPD", "GRÜNE", "FDP", "LINKE", "AFD")) {
-  marginal_params <- make_marginal_beta_params(fb_df, date_col = date_col, parties = parties)
+                       parties = c("CDU_CSU", "SPD", "GRÜNE", "FDP", "LINKE", "AFD")) {
 
   cols <- c("black", "red", "green", "yellow", "purple", "blue", "gray")
   names(cols) <- parties
 
-  marginal_params %>%
+  plot_dat <- fb_df %>%
     dplyr::select(all_of(c(date_col, parties))) %>%
-    tidyr::pivot_longer(cols = outparties, names_to = "Party", values_to = "beta_params") %>%
+    tidyr::pivot_longer(cols = all_of(parties), names_to = "Party", values_to = "beta_params") %>%
     dplyr::mutate(
-      Party = factor(Party, levels=outparties),
+      Party = factor(Party, levels=parties),
       mean = purrr::map_dbl(beta_params, ~ .x[1] / (.x[1] + .x[2])),
       q025 = purrr::map_dbl(beta_params, ~ qbeta(0.025, .x[1], .x[2])),
       q50 = purrr::map_dbl(beta_params, ~ qbeta(0.5, .x[1], .x[2])),
       q975 = purrr::map_dbl(beta_params, ~ qbeta(0.975, .x[1], .x[2]))
-    ) %>% ggplot(aes(x = .data[[date_col]], y = mean, col = Party)) + geom_line() +
-      scale_colour_manual(values = cols)
+    )
+  
+  ggplot(plot_dat, aes(x = .data[[date_col]], y = mean)) +
+    geom_ribbon(aes(ymin=q025, ymax=q975, fill = Party)) +
+    scale_fill_manual(values = cols)
 }
 
 
