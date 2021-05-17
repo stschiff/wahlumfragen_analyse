@@ -3,18 +3,27 @@ library(ggplot2)
 
 source('defs.R')
 
-dat <- import_polldat_all()
+dat <- import_polldat_all() %>% dplyr::filter(Release_Date > "2017-01-01")
 
-polldat_pivoted <- dat %>%
-  tidyr::pivot_longer(cols=c(CDU_CSU, SPD, GRÜNE, FDP, LINKE, AFD), names_to="Party", values_to="Percentage")
+parties <- c("CDU_CSU", "SPD", "GRÜNE", "FDP", "LINKE", "AFD")
+polldat_pivoted <- pivot_polldat(dat)
 
-ggplot(polldat_pivoted, aes(x=Release_Date, y=Percentage, col=Party)) + geom_point()
-  # ggplot(aes(x=Release_Date, y=Percentage, col=Party, shape=polling_institute, size=NrParticipants)) + geom_point() 
+cols <- c("black", "red", "green", "yellow", "purple", "blue", "gray")
+names(cols) <- parties
+ggplot(polldat_pivoted, aes(x=Release_Date, y=Percentage, col=Party)) + geom_point() + scale_colour_manual(values = cols)
 
-forward_df <- dat %>% run_forward(0.001, 1)
+diff <- learn_diffusion(dat)
+fb_df <- dat %>% run_forward_backward(diff)
 
-CDU_mean_df <- forward_df %>% dplyr::mutate(mean_CDU = purrr::map_dbl(dirichlet_params, ~.x[1]/sum(.x)))
+marginal_df <- make_marginal_beta_params(fb_df)
+
+ggplot(marginal_df, aes(x = date, y = mean, col=Party)) + geom_line() + scale_colour_manual(values = cols)
 
 ggplot(polldat_pivoted, aes(x=Release_Date, y=Percentage)) +
-  geom_point() + geom_line(data = CDU_mean_df, aes(x = date, y = 100*mean_CDU))
+  geom_point(aes(col=Party)) +
+  geom_line(data = posterior_means, aes(x = date, y = 100*mean_CDU, col="black")) +
+  geom_line(data = posterior_means, aes(x = date, y = 100*mean_SPD, col="red"))
+
+optimise(function(x) compute_likelihood(dat, x), interval=c(10^-6, 0.1), maximum = TRUE)
+# $maximum [1] 0.00654439 $objective [1] -25380.29
 

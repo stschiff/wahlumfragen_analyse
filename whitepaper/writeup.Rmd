@@ -5,6 +5,11 @@ date: "May 2021"
 output: pdf_document
 ---
 
+```{r include=FALSE}
+library(ggplot2)
+```
+
+
 Dirichlet distribution
 
 \begin{equation}
@@ -13,10 +18,32 @@ p(\{x_i\}|\{\alpha_i\}) = \frac{\Gamma(\mathrm{A})}{\prod_{i=1}^K \Gamma(\alpha_
 
 with $\mathrm{A}=\sum_i \alpha_i$.
 
-The log of the dirichlet function is then
+The likelihood of a set of observations $\{n_1\ldots n_k\}$ given a Dirichlet prior represented by $\{\alpha_1,\ldots,\alpha_k\}$ is described by the so-called [Dirichlet-Multinomial distribution](https://en.wikipedia.org/wiki/Dirichlet-multinomial_distribution), which is a so-called compound distribution:
 
 \begin{equation}
-\log p(\{x_i\}|\{\alpha_i\}) = \left(\log\Gamma(\mathrm{A}) - \sum_{i=1}^K \log\Gamma(\alpha_i)\right)
-  \sum_{i=1}^K (\alpha_i - 1) \log(x_i)
+  p(\{n_i\}|\{\alpha_i\}) = \frac{\Gamma(A)\Gamma(N+1)}{\Gamma(N+A)}\prod_{i=1}^k
+  \frac{\Gamma(n_k + \alpha_k)}{\Gamma(\alpha_k)\Gamma(n_k + 1)}
 \end{equation}
+where $N=\sum_i n_i$.
+
+Diffusion step
+
+```{r}
+a_diffusion <- function(t, a0, diffusion_constant, k)
+  pmax(k, (a0 - diffusion_constant * t * (a0 + 1)) / (1 + diffusion_constant * t * (a0 + 1)))
+
+a_diffusion2 <- function(t, a0, diffusion_constant, k)
+  a0 * (1.0 + k * diffusion_constant * t) / (1.0 + a0 * diffusion_constant * t)
+
+ggplot() + geom_function(fun = ~a_diffusion(., 100, 0.01, 5)) + xlim(0, 100) +
+  geom_function(fun = ~a_diffusion2(., 100, 0.01, 5), col="red")
+  
+```
+
+```{r}
+var_part <- function(a) (1 / (a + 1))
+ggplot() + geom_function(fun = ~var_part(a_diffusion(., 1000, 0.01, 5))) + xlim(0, 100) +
+  geom_function(fun = ~var_part(a_diffusion2(., 1000, 0.01, 5)), col="red")
+```
+
 
