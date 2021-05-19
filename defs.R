@@ -60,6 +60,7 @@ compute_logl_part <- function(pollVec, N, alphaVec) {
 
 compute_likelihood <- function(input_df,
                                diffusion_constant,
+                               diffusion_fun = diffuse_dirichlet,
                                date_col = "Release_Date",
                                size_col = "NrParticipants",
                                parties = c("CDU_CSU", "SPD", "GRÜNE", "FDP", "LINKE", "AFD", "SONSTIGE")) {
@@ -74,22 +75,24 @@ compute_likelihood <- function(input_df,
     new_dirichlet_params <- update_dirichlet(prior, poll_results, size)
     next_diff <- if(i < n) as.numeric(input_df[i + 1, date_col]  - input_df[i, date_col]) else 1
     if(next_diff < 0) stop("Error in forward algorithm: Input data must be date-sorted")
-    prior <- diffuse_dirichlet2(new_dirichlet_params, next_diff, diffusion_constant)
+    prior <- diffusion_fun(new_dirichlet_params, next_diff, diffusion_constant)
   }
   return(res)
 }
 
 learn_diffusion <- function(input_df,
+                            diffusion_fun = diffuse_dirichlet,
                             date_col = "Release_Date",
                             size_col = "NrParticipants",
                             parties = c("CDU_CSU", "SPD", "GRÜNE", "FDP", "LINKE", "AFD", "SONSTIGE")) {
-  fun <- function(d) {compute_likelihood(input_df, d, date_col, size_col, parties)}
+  fun <- function(d) {compute_likelihood(input_df, d, diffusion_fun, date_col, size_col, parties)}
   result <- optimise(fun, interval=c(10^-6, 0.1), maximum = TRUE)
   return(result$maximum)
 }
 
 run_forward <- function(input_df,
                         diffusion_constant,
+                        diffusion_fun = diffuse_dirichlet,
                         date_col = "Release_Date",
                         size_col = "NrParticipants",
                         parties = c("CDU_CSU", "SPD", "GRÜNE", "FDP", "LINKE", "AFD", "SONSTIGE")) {
@@ -104,13 +107,14 @@ run_forward <- function(input_df,
     forward_vec[[i]] <- new_dirichlet_params
     next_diff <- if(i < n) as.numeric(input_df[i + 1, date_col]  - input_df[i, date_col]) else 1
     if(next_diff < 0) stop("Error in forward algorithm: Input data must be date-sorted")
-    prior <- diffuse_dirichlet2(new_dirichlet_params, next_diff, diffusion_constant)
+    prior <- diffusion_fun(new_dirichlet_params, next_diff, diffusion_constant)
   }
   return(forward_vec)
 }
 
 run_backward <- function(input_df,
                          diffusion_constant,
+                         diffusion_fun = diffuse_dirichlet,
                          date_col = "Release_Date",
                          size_col = "NrParticipants",
                          parties = c("CDU_CSU", "SPD", "GRÜNE", "FDP", "LINKE", "AFD", "SONSTIGE")) {
@@ -125,19 +129,34 @@ run_backward <- function(input_df,
     new_dirichlet_params <- update_dirichlet(prior, poll_results, size)
     next_diff <- if(i > 1) as.numeric(input_df[i, date_col]  - input_df[i - 1, date_col]) else 1
     if(next_diff < 0) stop("Error in backward algorithm: Input data must be date-sorted")
-    prior <- diffuse_dirichlet2(new_dirichlet_params, next_diff, diffusion_constant)
+    prior <- diffusion_fun(new_dirichlet_params, next_diff, diffusion_constant)
   }
   return(backward_vec)
 }
 
 run_forward_backward <- function(input_df,
                                  diffusion_constant,
+                                 diffusion_fun = diffuse_dirichlet,
+                                 projection_dates = NULL,
                                  date_col = "Release_Date",
                                  size_col = "NrParticipants",
                                  parties = c("CDU_CSU", "SPD", "GRÜNE", "FDP", "LINKE", "AFD", "SONSTIGE")) {
-  forward_vec <- run_forward(input_df, diffusion_constant, date_col, size_col, parties)
-  backward_vec <- run_backward(input_df, diffusion_constant, date_col, size_col, parties)
-  ret <- tibble::tibble(date = input_df[[date_col]], forward_vec = forward_vec, backward_vec = backward_vec) %>%
+  forward_vec_ <- run_forward(input_df, diffusion_constant, diffusion_fun, date_col, size_col, parties)
+  backward_vec_ <- run_backward(input_df, diffusion_constant, diffusion_fun, date_col, size_col, parties)
+  for (d in projection_dates) {
+    n <- length(forward_vec_)
+    k <- length(parties)
+    diff_time <- as.numeric(as.Date(d) - input_df[[date_col]][n])
+    new_dirichlet_params <- diffusion_fun(forward_vec_[[n]], diff_time, diffusion_constant)
+    forward_vec_[[n + 1]] <- new_dirichlet_params
+    backward_vec_[[n + 1]] <- rep(1.0, k)
+  }
+  ret <- tibble::tibble(date = c(input_df[[date_col]], as.Date(projection_dates)), forward_vec = forward_vec_, backward_vec = backward_vec_) %>%
+    dplyr::group_by(date) %>%
+    dplyr::summarise(
+      forward_vec = forward_vec[length(forward_vec)],
+      backward_vec = backward_vec[length(backward_vec)]
+    ) %>%
     dplyr::mutate(posterior = purrr::map2(forward_vec, backward_vec, ~ .x + .y - 1))
   for (i in 1:length(parties)) {
     partyName <- parties[i]
