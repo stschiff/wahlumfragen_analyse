@@ -34,6 +34,11 @@ import_polldat_all <- function() {
     dplyr::arrange(Release_Date)
 }
 
+import_election_dat <- function() {
+  readr::read_tsv("data/Wahlergebnisse.txt",
+                  col_types = readr::cols(Date = readr::col_date(format = "%d.%m.%Y")))
+}
+
 update_dirichlet <- function(dirichlet_params, poll_results, poll_size) {
   return(dirichlet_params + poll_results / 100.0 * poll_size)
 }
@@ -60,7 +65,7 @@ compute_logl_part <- function(pollVec, N, alphaVec) {
 
 compute_likelihood <- function(input_df,
                                diffusion_constant,
-                               diffusion_fun = diffuse_dirichlet,
+                               diffusion_fun = diffuse_dirichlet2,
                                date_col = "Release_Date",
                                size_col = "NrParticipants",
                                parties = c("CDU_CSU", "SPD", "GRÜNE", "FDP", "LINKE", "AFD", "SONSTIGE")) {
@@ -81,7 +86,7 @@ compute_likelihood <- function(input_df,
 }
 
 learn_diffusion <- function(input_df,
-                            diffusion_fun = diffuse_dirichlet,
+                            diffusion_fun = diffuse_dirichlet2,
                             date_col = "Release_Date",
                             size_col = "NrParticipants",
                             parties = c("CDU_CSU", "SPD", "GRÜNE", "FDP", "LINKE", "AFD", "SONSTIGE")) {
@@ -92,7 +97,7 @@ learn_diffusion <- function(input_df,
 
 run_forward <- function(input_df,
                         diffusion_constant,
-                        diffusion_fun = diffuse_dirichlet,
+                        diffusion_fun = diffuse_dirichlet2,
                         date_col = "Release_Date",
                         size_col = "NrParticipants",
                         parties = c("CDU_CSU", "SPD", "GRÜNE", "FDP", "LINKE", "AFD", "SONSTIGE")) {
@@ -114,7 +119,7 @@ run_forward <- function(input_df,
 
 run_backward <- function(input_df,
                          diffusion_constant,
-                         diffusion_fun = diffuse_dirichlet,
+                         diffusion_fun = diffuse_dirichlet2,
                          date_col = "Release_Date",
                          size_col = "NrParticipants",
                          parties = c("CDU_CSU", "SPD", "GRÜNE", "FDP", "LINKE", "AFD", "SONSTIGE")) {
@@ -136,24 +141,24 @@ run_backward <- function(input_df,
 
 run_forward_backward <- function(input_df,
                                  diffusion_constant,
-                                 diffusion_fun = diffuse_dirichlet,
+                                 diffusion_fun = diffuse_dirichlet2,
                                  projection_dates = NULL,
                                  date_col = "Release_Date",
                                  size_col = "NrParticipants",
                                  parties = c("CDU_CSU", "SPD", "GRÜNE", "FDP", "LINKE", "AFD", "SONSTIGE")) {
   forward_vec_ <- run_forward(input_df, diffusion_constant, diffusion_fun, date_col, size_col, parties)
   backward_vec_ <- run_backward(input_df, diffusion_constant, diffusion_fun, date_col, size_col, parties)
+  dates <- if(!is.null(projection_dates)) c(input_df[[date_col]], as.Date(projection_dates)) else input_df[[date_col]]
   if(!is.null(projection_dates)) {
     for (d in projection_dates) {
       n <- length(forward_vec_)
       k <- length(parties)
-      diff_time <- as.numeric(as.Date(d) - input_df[[date_col]][n])
+      diff_time <- as.numeric(as.Date(d) - dates[n])
       new_dirichlet_params <- diffusion_fun(forward_vec_[[n]], diff_time, diffusion_constant)
       forward_vec_[[n + 1]] <- new_dirichlet_params
       backward_vec_[[n + 1]] <- rep(1.0, k)
     }
   }
-  dates <- if(!is.null(projection_dates)) c(input_df[[date_col]], as.Date(projection_dates)) else input_df[[date_col]]
   ret <- tibble::tibble(date = dates, forward_vec = forward_vec_, backward_vec = backward_vec_) %>%
     dplyr::group_by(date) %>%
     dplyr::summarise(
@@ -203,9 +208,17 @@ plot_model <- function(fb_df,
       q975 = purrr::map_dbl(beta_params, ~ qbeta(0.975, .x[1], .x[2]))
     )
   
+  ed <- import_election_dat() %>% dplyr::select(tidyselect::all_of(c(parties, "Date"))) %>%
+    tidyr::pivot_longer(cols = parties, names_to = "Party", values_to = "Percentage") %>%
+    dplyr::mutate(
+      Percentage = Percentage / 100.0,
+      Party = factor(Party, levels=parties)
+    ) %>%
+    dplyr::filter(Date > fb_df$date[1] - 30)
   ggplot(plot_dat, aes(x = .data[[date_col]], y = mean)) +
-    geom_ribbon(aes(ymin=q025, ymax=q975, fill = Party)) +
-    scale_fill_manual(values = cols)
+    geom_ribbon(aes(ymin=q025, ymax=q975, fill = Party), alpha=0.5) +
+    scale_fill_manual(values = cols) + 
+    geom_point(data = ed, aes(x = Date, y = Percentage, col=Party)) + scale_colour_manual(values = cols)
 }
 
 
