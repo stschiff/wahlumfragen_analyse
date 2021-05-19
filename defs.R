@@ -143,15 +143,18 @@ run_forward_backward <- function(input_df,
                                  parties = c("CDU_CSU", "SPD", "GRÜNE", "FDP", "LINKE", "AFD", "SONSTIGE")) {
   forward_vec_ <- run_forward(input_df, diffusion_constant, diffusion_fun, date_col, size_col, parties)
   backward_vec_ <- run_backward(input_df, diffusion_constant, diffusion_fun, date_col, size_col, parties)
-  for (d in projection_dates) {
-    n <- length(forward_vec_)
-    k <- length(parties)
-    diff_time <- as.numeric(as.Date(d) - input_df[[date_col]][n])
-    new_dirichlet_params <- diffusion_fun(forward_vec_[[n]], diff_time, diffusion_constant)
-    forward_vec_[[n + 1]] <- new_dirichlet_params
-    backward_vec_[[n + 1]] <- rep(1.0, k)
+  if(!is.null(projection_dates)) {
+    for (d in projection_dates) {
+      n <- length(forward_vec_)
+      k <- length(parties)
+      diff_time <- as.numeric(as.Date(d) - input_df[[date_col]][n])
+      new_dirichlet_params <- diffusion_fun(forward_vec_[[n]], diff_time, diffusion_constant)
+      forward_vec_[[n + 1]] <- new_dirichlet_params
+      backward_vec_[[n + 1]] <- rep(1.0, k)
+    }
   }
-  ret <- tibble::tibble(date = c(input_df[[date_col]], as.Date(projection_dates)), forward_vec = forward_vec_, backward_vec = backward_vec_) %>%
+  dates <- if(!is.null(projection_dates)) c(input_df[[date_col]], as.Date(projection_dates)) else input_df[[date_col]]
+  ret <- tibble::tibble(date = dates, forward_vec = forward_vec_, backward_vec = backward_vec_) %>%
     dplyr::group_by(date) %>%
     dplyr::summarise(
       forward_vec = forward_vec[length(forward_vec)],
