@@ -142,23 +142,13 @@ run_backward <- function(input_df,
 run_forward_backward <- function(input_df,
                                  diffusion_constant,
                                  diffusion_fun = diffuse_dirichlet2,
-                                 projection_dates = NULL,
                                  date_col = "Release_Date",
                                  size_col = "NrParticipants",
                                  parties = c("CDU_CSU", "SPD", "GRÜNE", "FDP", "LINKE", "AFD", "SONSTIGE")) {
   forward_vec_ <- run_forward(input_df, diffusion_constant, diffusion_fun, date_col, size_col, parties)
   backward_vec_ <- run_backward(input_df, diffusion_constant, diffusion_fun, date_col, size_col, parties)
-  dates <- if(!is.null(projection_dates)) c(input_df[[date_col]], as.Date(projection_dates)) else input_df[[date_col]]
-  if(!is.null(projection_dates)) {
-    for (d in projection_dates) {
-      n <- length(forward_vec_)
-      k <- length(parties)
-      diff_time <- as.numeric(as.Date(d) - dates[n])
-      new_dirichlet_params <- diffusion_fun(forward_vec_[[n]], diff_time, diffusion_constant)
-      forward_vec_[[n + 1]] <- new_dirichlet_params
-      backward_vec_[[n + 1]] <- rep(1.0, k)
-    }
-  }
+  dates <- input_df[[date_col]]
+  # Getting rid of double dates because of multiple polls per day
   ret <- tibble::tibble(date = dates, forward_vec = forward_vec_, backward_vec = backward_vec_) %>%
     dplyr::group_by(date) %>%
     dplyr::summarise(
