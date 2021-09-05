@@ -1,6 +1,7 @@
 library(magrittr)
 library(ggplot2)
 
+
 import_polldat <- function(polling_institute) {
   filename <- switch(polling_institute,
                      "Allensbach" = "data/Allensbach.txt",
@@ -166,8 +167,9 @@ run_forward_backward <- function(input_df,
 }
 
 plot_polldat <- function(input_df,
-                         date_col = "Release_Date",
-                         parties = c("CDU_CSU", "SPD", "GRÜNE", "FDP", "LINKE", "AFD")) {
+                         date_col = "Release_Date") {
+  
+  parties <- c("CDU_CSU", "SPD", "GRÜNE", "FDP", "LINKE", "AFD")
   pivoted_polldat <- input_df %>% dplyr::select(all_of(c(date_col, parties))) %>%
     tidyr::pivot_longer(cols=all_of(parties), names_to="Party", values_to="Percentage") %>%
     dplyr::mutate(Party = factor(Party, levels=parties))
@@ -181,9 +183,9 @@ plot_polldat <- function(input_df,
 }
 
 plot_model <- function(fb_df,
-                       date_col = "date",
-                       parties = c("CDU_CSU", "SPD", "GRÜNE", "FDP", "LINKE", "AFD")) {
-
+                       date_col = "date") {
+  
+  parties <- c("CDU_CSU", "SPD", "GRÜNE", "FDP", "LINKE", "AFD")
   cols <- c("black", "red", "green", "yellow", "purple", "blue", "gray")
   names(cols) <- parties
 
@@ -198,17 +200,112 @@ plot_model <- function(fb_df,
       q975 = purrr::map_dbl(beta_params, ~ qbeta(0.975, .x[1], .x[2]))
     )
   
-  ed <- import_election_dat() %>% dplyr::select(tidyselect::all_of(c(parties, "Date"))) %>%
-    tidyr::pivot_longer(cols = parties, names_to = "Party", values_to = "Percentage") %>%
-    dplyr::mutate(
-      Percentage = Percentage / 100.0,
-      Party = factor(Party, levels=parties)
-    ) %>%
-    dplyr::filter(Date > fb_df$date[1] - 30)
   ggplot(plot_dat, aes(x = .data[[date_col]], y = mean)) +
     geom_ribbon(aes(ymin=q025, ymax=q975, fill = Party), alpha=0.5) +
-    scale_fill_manual(values = cols) + 
-    geom_point(data = ed, aes(x = Date, y = Percentage, col=Party)) + scale_colour_manual(values = cols)
+    scale_fill_manual(values = cols)
 }
 
+plot_polldat_with_model <- function(input_df,
+                                    fb_df,
+                                    date_col1 = "Release_Date",
+                                    date_col2 = "date") {
+
+  parties <- c("CDU_CSU", "SPD", "GRÜNE", "FDP", "LINKE", "AFD")
+  pivoted_polldat <- input_df %>% dplyr::select(all_of(c(date_col1, parties))) %>%
+    tidyr::pivot_longer(cols=all_of(parties), names_to="Party", values_to="Percentage") %>%
+    dplyr::mutate(Party = factor(Party, levels=parties))
+  
+  cols <- c("black", "red", "green", "yellow", "purple", "blue")
+  names(cols) <- parties
+  
+  model_plot_dat <- fb_df %>%
+    dplyr::select(all_of(c(date_col2, parties))) %>%
+    tidyr::pivot_longer(cols = all_of(parties), names_to = "Party", values_to = "beta_params") %>%
+    dplyr::mutate(
+      Party = factor(Party, levels=parties),
+      mean = purrr::map_dbl(beta_params, ~ .x[1] / (.x[1] + .x[2])),
+      q025 = purrr::map_dbl(beta_params, ~ qbeta(0.025, .x[1], .x[2])),
+      q50 = purrr::map_dbl(beta_params, ~ qbeta(0.5, .x[1], .x[2])),
+      q975 = purrr::map_dbl(beta_params, ~ qbeta(0.975, .x[1], .x[2]))
+    )
+  
+  ggplot(pivoted_polldat) +
+    geom_point(aes(x=.data[[date_col1]], y=Percentage, col=Party), alpha = 0.3) +
+    scale_colour_manual(values = cols) +
+    geom_ribbon(data = model_plot_dat,
+                aes(x = .data[[date_col2]],
+                    y = 100 * mean,
+                    ymin = 100 * q025,
+                    ymax = 100 * q975, fill = Party),
+                alpha = 0.7) +
+    scale_fill_manual(values = cols)
+}
+
+projection_dirichlet <-function(fb_df,
+                                projection_date_str,
+                                date_col = "date",
+                                posterior_col = "posterior") {
+  final_date <- tail(fb_df[[date_col]], n=1)
+  final_dirichlet_params <- tail(fb_df[[posterior_col]], n=1)[[1]]
+  projection_date <- as.Date(projection_date_str)
+  diff_days <- as.numeric(projection_date - final_date)
+  diffuse_dirichlet2(final_dirichlet_params, diff_days, diff)
+}
+
+projection_beta <- function(fb_df,
+                             projection_date_str,
+                             date_col = "date",
+                             posterior_col = "posterior") {
+  projected_dirichlet_params <- projection_dirichlet(fb_df, projection_date_str, date_col, posterior_col)
+  
+  parties <- c("CDU_CSU", "SPD", "GRÜNE", "FDP", "LINKE", "AFD")
+  tibble::tibble(
+    party = parties,
+    beta_params = purrr::map2(parties,
+                              1:length(parties),
+                              ~ c(projected_dirichlet_params[.y],
+                                  sum(projected_dirichlet_params) - projected_dirichlet_params[.y])),
+    q025 = purrr::map_dbl(beta_params, ~ qbeta(0.025, .x[1], .x[2])),
+    q50 = purrr::map_dbl(beta_params, ~ qbeta(0.5, .x[1], .x[2])),
+    q975 = purrr::map_dbl(beta_params, ~ qbeta(0.975, .x[1], .x[2]))
+  )
+}
+
+coalition_probs <- function(dir_params, ndraws) {
+  random_props <- gtools::rdirichlet(ndraws, dir_params)[,1:6]
+  random_props[random_props < 0.05] <- 0.0
+  norm_facs <- rowSums(random_props)
+  random_props_norm <- random_props / norm_facs
+  parties <- c("CDU_CSU", "SPD", "GRÜNE", "FDP", "LINKE", "AFD")
+  coalitions = list(
+    c("CDU_CSU", "SPD"),
+    c("CDU_CSU", "SPD", "GRÜNE"),
+    c("SPD", "GRÜNE"),
+    c("SPD", "GRÜNE", "FDP"),
+    c("CDU_CSU", "FDP"),
+    c("CDU_CSU", "FDP", "GRÜNE"),
+    c("CDU_CSU", "FDP", "SPD"),
+    c("SPD", "LINKE"),
+    c("SPD", "GRÜNE", "LINKE")
+  )
+  probs = purrr::map_dbl(coalitions, function(coalition) {
+    coalition_i <- match(coalition, parties)
+    sum(rowSums(random_props_norm[,coalition_i]) > 0.5) / ndraws
+  })
+  tibble::tibble(
+    name = purrr::map_chr(coalitions, ~ paste(.x, collapse=' + ')),
+    probs = probs
+  )
+}
+
+largest_party_probs <- function(dir_params, ndraws) {
+  random_props <- gtools::rdirichlet(ndraws, dir_params)[,1:6]
+  res <- purrr::map_dbl(1:6, function(party_i) {
+    sum(apply((random_props - random_props[,party_i]) <= 0, 1, all)) / ndraws
+  })
+  tibble::tibble(
+    parties = c("CDU_CSU", "SPD", "GRÜNE", "FDP", "LINKE", "AFD"),
+    prob = res
+  )
+}
 

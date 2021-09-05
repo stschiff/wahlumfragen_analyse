@@ -1,0 +1,56 @@
+---
+title: "2021 General Election Poll data analysis for Germany"
+output: html_notebook
+---
+
+```{r}
+library(magrittr)
+library(ggplot2)
+
+source('defs.R')
+```
+
+_Last Update: September 5th, 2021_
+
+Germany's federal elections are coming up, and it's going to be an exciting election for once. Angela Merkel, long-time chancellor, is not running for re-election anymore, and her party, the CDU, isn't particularly doing well at this point.
+
+I am analysing poll data for this election with a statistical model that integrates the available polls from different pollsters into a probabilistic framework. What is special about this model is that it is able to not only make inferences about the dynamics and current situation in the polls, but also to make probabilitistic projections into the future, particularly onto election day.
+
+Here is how the six main parties in Germany have been doing throughout this year:
+
+```{r}
+dat <- import_polldat_all() %>%
+  dplyr::filter(Release_Date > "2017-08-01")
+diff <- learn_diffusion(dat)
+fb_df <- dat %>% run_forward_backward(diff)
+plot_polldat_with_model(dplyr::filter(dat, Release_Date > "2021-01-01"),
+                        dplyr::filter(fb_df, date > "2021-01-01"))
+```
+
+The figure shows all available polling data from 8 different pollsters (data available on my github repository [here](https://github.com/stschiff/wahlumfragen_analyse/tree/master/data)), together with a prediction band of the model, which marks the 95% credibility interval for each of the "true" proportions in hypothetical votes at that point. 
+
+The probabilistic nature of our model makes it possible to not only "postdict" the present and the past, but also project into the future, explicitly considering the uncertainty of how much public opinion might still shift between today and election day (September 26, 2021).
+
+Here are our predicton intervals for election day:
+
+```{r}
+projection_beta(fb_df, "2021-09-26") %>%
+  dplyr::select(party, q025, q975) %>%
+  dplyr::rename(Party=party, Lower=q025, Upper=q975) %>%
+  knitr::kable()
+```
+
+
+which shows fairly high uncertainty still at this point.
+
+We can use these probabilistic predictions also to simulate the proportions in the next parliament, many times over, and measure the proportion of simulations in which a given coalition reaches more than the required 50% for governing. Here are our coalition-win probabilities based on 10000 simulations of election outcomes
+
+```{r}
+dir_params <- projection_dirichlet(fb_df, "2021-09-26")
+coalition_probs(dir_params, 10000) %>% knitr::kable()
+```
+We can also query the probability for each party to be the largest party in the next parliament:
+
+```{r}
+largest_party_probs(dir_params, 10000) %>% knitr::kable()
+```
