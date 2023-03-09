@@ -26,7 +26,8 @@ import_polldat <- function(polling_institute) {
     dplyr::mutate(polling_institute = polling_institute) %>%
     dplyr::select(c(Release_Date, Polling_Start, Polling_End, polling_institute, NrParticipants,
                     CDU_CSU, SPD, GRÜNE, LINKE, FDP, AFD)) %>%
-    dplyr::mutate(SONSTIGE = 100.0 - CDU_CSU - SPD - GRÜNE - LINKE - FDP - AFD)
+    dplyr::mutate(SONSTIGE = 100.0 - CDU_CSU - SPD - GRÜNE - LINKE - FDP - AFD) %>%
+    dplyr::arrange(Release_Date)
 }
 
 import_polldat_all <- function() {
@@ -269,6 +270,20 @@ projection_beta <- function(fb_df,
     q50 = purrr::map_dbl(beta_params, ~ qbeta(0.5, .x[1], .x[2])),
     q975 = purrr::map_dbl(beta_params, ~ qbeta(0.975, .x[1], .x[2]))
   )
+}
+
+projection_simulation <- function(fb_df,
+                                  projection_date_str,
+                                  boost_size = 0.01,
+                                  ndraws = 10000,
+                                  date_col = "date",
+                                  posterior_col = "posterior") {
+  projected_dirichlet_params <- projection_dirichlet(fb_df, projection_date_str, date_col, posterior_col)
+  random_props <- gtools::rdirichlet(ndraws, dir_params)[,1:6]
+  
+  
+  parties <- c("CDU_CSU", "SPD", "GRÜNE", "FDP", "LINKE", "AFD")
+  
 }
 
 coalition_probs <- function(dir_params, ndraws) {

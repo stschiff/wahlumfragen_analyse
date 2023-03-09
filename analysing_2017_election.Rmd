@@ -3,6 +3,8 @@ title: "R Notebook"
 output: html_notebook
 ---
 
+# 2013-2017 data
+
 ```{R include=FALSE}
 library(magrittr)
 library(ggplot2)
@@ -10,114 +12,40 @@ library(ggplot2)
 source('defs.R')
 ```
 
-Let's load all pools from the 1st of October 2013 (shortly after the 2013 election) until the 21st of September 2017 (one day before the last election):
+Let's load all polls from the 1st of October 2013 (shortly after the 2013 election) until the 21st of September 2017 (one day before the last election):
 
 ```{R loading}
 dat <- import_polldat_all() %>% dplyr::filter(Release_Date > "2013-10-01" & Release_Date < "2017-09-24")
 ```
 
-```{R plotting}
-parties <- c("CDU_CSU", "SPD", "GRÜNE", "FDP", "LINKE", "AFD")
-cols <- c("black", "red", "green", "yellow", "purple", "blue")
-names(cols) <- parties
-pivoted_polldat <- dat %>% dplyr::select(all_of(c("Release_Date", parties))) %>%
-  tidyr::pivot_longer(cols=all_of(parties), names_to="Party", values_to="Percentage") %>%
-  dplyr::mutate(Party = factor(Party, levels=parties))
-ggplot(pivoted_polldat) +
-  geom_point(aes(x=Release_Date, y=Percentage, col=Party)) +
-  scale_colour_manual(values = cols)
-```
-
-Learning diffusion:
-
-```{R learning diffusion}
-diff <- learn_diffusion(dat)
-diff
-```
-
-```{R forward-backward}
+```{r}
+# diff <- learn_diffusion(dat)
+diff <- 0.00637722
 fb_df <- dat %>% run_forward_backward(diff)
+dplyr::rename(dat, Date = Release_Date) %>% plot_polldat_with_model(fb_df, date_col1 = "Date")
 ```
 
-```{R plotting model and poll-data}
-  model_plot_dat <- fb_df %>%
-    dplyr::select(all_of(c("date", parties))) %>%
-    tidyr::pivot_longer(cols = all_of(parties), names_to = "Party", values_to = "beta_params") %>%
-    dplyr::mutate(
-      Party = factor(Party, levels=parties),
-      mean = purrr::map_dbl(beta_params, ~ .x[1] / (.x[1] + .x[2])),
-      q025 = purrr::map_dbl(beta_params, ~ qbeta(0.025, .x[1], .x[2])),
-      q50 = purrr::map_dbl(beta_params, ~ qbeta(0.5, .x[1], .x[2])),
-      q975 = purrr::map_dbl(beta_params, ~ qbeta(0.975, .x[1], .x[2]))
-    )
-  election_dat <- tibble::tibble(
-    date = as.Date(rep("2017-09-24", 6)),
-    Percentage = c(33.0, 20.5, 8.9, 10.7, 9.2, 12.6),
-    Party = c("CDU_CSU", "SPD", "GRÜNE", "FDP", "LINKE", "AFD")
-  )
-  ggplot(pivoted_polldat) +
-    geom_point(aes(x=Release_Date, y=Percentage, col=Party), alpha = 0.2) +
-    geom_point(data = election_dat, aes(x = date, y=Percentage, col = Party)) +
-    scale_colour_manual(values = cols) +
-    geom_ribbon(data = model_plot_dat, aes(x = date, y = 100*mean, ymin=100*q025, ymax=100*q975, fill = Party)) +
-    scale_fill_manual(values = cols)
-```
+
+# How well did the polls do in predicting the election?
+
 
 ```{R plotting dists}
-model_plot_dat <- fb_df %>%
-  dplyr::select(all_of(c("date", parties))) %>%
-  tidyr::pivot_longer(cols = all_of(parties), names_to = "Party", values_to = "beta_params") %>%
+deviation <- projection_beta(fb_df, "2017-09-24") %>%
+  dplyr::left_join(tibble::tibble(
+    party = c("CDU_CSU", "SPD", "GRÜNE", "FDP", "LINKE", "AFD"),
+    results = c(33.0, 20.5, 8.9, 10.7, 9.2, 12.6)
+  ), by="party") %>%
+  dplyr::select(party, q025, q975, results) %>%
   dplyr::mutate(
-    Party = factor(Party, levels=parties),
-    q025 = purrr::map_dbl(beta_params, ~ qbeta(0.025, .x[1], .x[2])),
-    q25 = purrr::map_dbl(beta_params, ~ qbeta(0.25, .x[1], .x[2])),
-    q50 = purrr::map_dbl(beta_params, ~ qbeta(0.5, .x[1], .x[2])),
-    q75 = purrr::map_dbl(beta_params, ~ qbeta(0.75, .x[1], .x[2])),
-    q975 = purrr::map_dbl(beta_params, ~ qbeta(0.975, .x[1], .x[2]))
+    deviation = ifelse(results > q975 * 100, results - q975 * 100, ifelse(results > q025 * 100, 0, q025 * 100 - results))
   )
-model_plot_dat %>%
-  dplyr::filter(date == "2017-09-22") %>%
-  ggplot(aes(x = Party)) +
-    geom_boxplot(
-      aes(
-        ymin = q025 * 100,
-        lower = q25 * 100,
-        middle = q50 * 100,
-        upper = q75 * 100,
-        ymax = q975 * 100),
-      stat = "identity"
-    ) + 
-    geom_point(data = election_dat, aes(x = Party, y=Percentage))
+deviation
 ```
 
-OK, this is far outside the bounds. Let's reduce the poll size artificially:
+So deviations between 0.12 and 1.5 percent points between our prediction band and the true results. We can compute an average:
 
-```{R}
-dat_reduced_size <- dat %>% dplyr::mutate(NrParticipants = 0.1 * NrParticipants)
-diff_reduced_size <- learn_diffusion(dat_reduced_size)
-print(diff_reduced_size)
-fb_df_reduced_size <- dat_reduced_size %>% run_forward_backward(diff)
-model_plot_dat <- fb_df_reduced_size %>%
-  dplyr::select(all_of(c("date", parties))) %>%
-  tidyr::pivot_longer(cols = all_of(parties), names_to = "Party", values_to = "beta_params") %>%
-  dplyr::mutate(
-    Party = factor(Party, levels=parties),
-    mean = purrr::map_dbl(beta_params, ~ .x[1] / (.x[1] + .x[2])),
-    q025 = purrr::map_dbl(beta_params, ~ qbeta(0.025, .x[1], .x[2])),
-    q50 = purrr::map_dbl(beta_params, ~ qbeta(0.5, .x[1], .x[2])),
-    q975 = purrr::map_dbl(beta_params, ~ qbeta(0.975, .x[1], .x[2]))
-  )
-election_dat <- tibble::tibble(
-  date = as.Date(rep("2017-09-24", 6)),
-  Percentage = c(33.0, 20.5, 8.9, 10.7, 9.2, 12.6),
-  Party = c("CDU_CSU", "SPD", "GRÜNE", "FDP", "LINKE", "AFD")
-)
-ggplot(pivoted_polldat) +
-  geom_point(aes(x=Release_Date, y=Percentage, col=Party), alpha = 0.2) +
-  geom_point(data = election_dat, aes(x = date, y=Percentage, col = Party)) +
-  scale_colour_manual(values = cols) +
-  geom_ribbon(data = model_plot_dat, aes(x = date, y = 100*mean, ymin=100*q025, ymax=100*q975, fill = Party)) +
-  scale_fill_manual(values = cols)
-
+```{r}
+mean(deviation$deviation)
 ```
 
+so on average 0.7% off. Not too bad. But we can take that into account when simulating election results.
